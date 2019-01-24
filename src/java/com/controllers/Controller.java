@@ -55,11 +55,24 @@ public class Controller extends HttpServlet {
             // Corrige un bug du fonctionnement d'Internet Explorer
              nomFichier = nomFichier.substring(nomFichier.lastIndexOf('/') + 1)
                     .substring(nomFichier.lastIndexOf('\\') + 1);
+             nomFichier = nomFichier.replace("CM_2018-08-01_WGS84_", "");
             ecrireFichier(part, nomFichier, CHEMIN_FICHIERS);  // On écrit définitivement le fichier sur le disque
         }
         
         String body = "file:///" + CHEMIN_FICHIERS + nomFichier;
         jsonPostRequest(url,body);
+        
+        // Après l'upload du layer je modifie directement son srs à EPSG:4326 pour que l'affichage se passe sans bemol
+        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
+        JSONObject featuresByLayout = jsonGetRequest(base+nomFichier);
+        try {
+            featuresByLayout.getJSONObject("featureType").remove("srs");
+            featuresByLayout.getJSONObject("featureType").put("srs", "EPSG:4326");
+        } catch (JSONException ex) {
+            Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        jsonPutFeatureRequest(base+nomFichier,featuresByLayout.toString());
         
         JSONArray send = affichageCarte();
         request.setAttribute("layerGroup", send);
@@ -68,38 +81,64 @@ public class Controller extends HttpServlet {
 
     // Traitement affichage carte
     public JSONArray affichageCarte(){
-        
-        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
-        JSONObject layerGroup = jsonGetRequest("http://localhost:8080/geoserver/rest/workspaces/Cameroun/layers");
-        JSONArray send = null; // pour renvoyer juste un json contenant le tableau de layer
+        JSONObject test = new JSONObject();
         try {
-            JSONArray table = layerGroup
-                    .getJSONObject("layers").getJSONArray("layer");
-            
-            for (int i = 0 ; i < table.length(); i++) {
-                JSONObject objI = table.getJSONObject(i);
-                String nameI = objI.getString("name");
-                
-                JSONObject featuresByLayout = jsonGetRequest(base+nameI);
-                JSONArray table2 = featuresByLayout
-                        .getJSONObject("featureType")
-                        .getJSONObject("attributes")
-                        .getJSONArray("attribute");
-                
-                ArrayList<String> myNames = new ArrayList<>();
-                for (int j = 0 ; j < table2.length(); j++) {
-                    JSONObject objJ = table2.getJSONObject(j);
-                    String nameJ = objJ.getString("name");
-                    myNames.add(nameJ);
-                }
-                
-                objI.put("attributes", myNames);  
-            }
-            send = table;
+            test.put("layers", "");
         } catch (JSONException ex) {
             Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
+        JSONObject layerGroup = jsonGetRequest("http://localhost:8080/geoserver/rest/workspaces/Cameroun/layers");
+        JSONArray send = new JSONArray(); // pour renvoyer juste un json contenant le tableau de layer
+           
+        if(layerGroup.toString().equals(test.toString())== false){
+            
+            try {
+                JSONArray table = layerGroup
+                        .getJSONObject("layers").getJSONArray("layer");
+
+                for (int i = 0 ; i < table.length(); i++) {
+                    JSONObject objI = table.getJSONObject(i);
+                    String nameI = objI.getString("name");
+
+                    JSONObject featuresByLayout = jsonGetRequest(base+nameI);
+                    JSONObject table2_1 = null;
+                    JSONArray table2_2 = null;
+                
+                    try {
+                        table2_1= featuresByLayout
+                            .getJSONObject("featureType")
+                            .getJSONObject("attributes")
+                            .getJSONObject("attribute");
+
+                        table2_2= featuresByLayout
+                            .getJSONObject("featureType")
+                            .getJSONObject("attributes")
+                            .getJSONArray("attribute");
+
+                    } catch (Exception e) {
+                    }
+                
+                    ArrayList<String> myNames = new ArrayList<>();
+
+                    if(table2_2 != null){
+                        for (int j = 0 ; j < table2_2.length(); j++) {
+                            JSONObject objJ = table2_2.getJSONObject(j);
+                            String nameJ = objJ.getString("name");
+                            myNames.add(nameJ);
+                        }
+                    }
+                    if(table2_1 != null){
+                        String nameJ = table2_1.getString("name");
+                        myNames.add(nameJ);
+                    }
+                    objI.put("attributes", myNames);
+                }
+                send = table;
+            } catch (JSONException ex) {
+                Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
         return send; 
     }
     
@@ -151,7 +190,7 @@ public class Controller extends HttpServlet {
             String userCredentials = user_name+":"+password;
             String basicAuth = "Basic " + new String(new Base64().encode(userCredentials.getBytes()));
             con.setRequestProperty ("Authorization", basicAuth);
-            con.setRequestProperty("Content-Type", "text/plain");
+            con.setRequestProperty("Content-Type", "text/plain"); //gridSetName=EPSG:4326
             
             // Send post request
             con.setDoOutput(true);
@@ -204,4 +243,37 @@ public class Controller extends HttpServlet {
         return jsonObj;
     }
    
+    
+    public static void jsonPutFeatureRequest(String url, String parameters) {
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("PUT");
+
+            String user_name="admin";
+            String password="geoserver";
+
+            String userCredentials = user_name+":"+password;
+            String basicAuth = "Basic " + new String(new Base64().encode(userCredentials.getBytes()));
+            con.setRequestProperty ("Authorization", basicAuth);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("Accept", "application/json");
+            
+            // Send post request
+            con.setDoOutput(true);
+            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+            wr.writeBytes(parameters);
+            wr.flush();
+            wr.close();
+            con.connect();
+            int responseCode = con.getResponseCode();
+            System.out.println("Sending 'PUT' request to URL : " + url);
+            System.out.println("Put parameters : " + parameters);
+            System.out.println("Response Code : " + responseCode);
+            
+            } catch (IOException e) {
+             System.out.println(e);
+           }
+    }
+    
 }

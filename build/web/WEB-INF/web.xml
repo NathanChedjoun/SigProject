@@ -9,9 +9,9 @@
     <servlet-name>controller</servlet-name>
     <servlet-class>com.controllers.Controller</servlet-class>
     <multipart-config>
-        <max-file-size>10485760</max-file-size> <!-- 10 Mo -->
-        <max-request-size>52428800</max-request-size> <!-- 5 x 10 Mo -->
-        <file-size-threshold>1024</file-size-threshold> <!-- 1 O -->
+        <max-file-size>104857600</max-file-size> <!-- 100 Mo -->
+        <max-request-size>524288000</max-request-size> <!-- 5 x 100 Mo -->
+        <file-size-threshold>1024</file-size-threshold> <!-- 1 o -->
     </multipart-config>
   </servlet>
   <servlet-mapping>
