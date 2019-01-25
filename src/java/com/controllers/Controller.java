@@ -190,7 +190,7 @@ public class Controller extends HttpServlet {
             String userCredentials = user_name+":"+password;
             String basicAuth = "Basic " + new String(new Base64().encode(userCredentials.getBytes()));
             con.setRequestProperty ("Authorization", basicAuth);
-            con.setRequestProperty("Content-Type", "text/plain"); //gridSetName=EPSG:4326
+            con.setRequestProperty("Content-Type", "text/plain"); 
             
             // Send post request
             con.setDoOutput(true);
