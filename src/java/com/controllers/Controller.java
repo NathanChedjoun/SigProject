@@ -2,7 +2,6 @@
 package com.controllers;
 
 import it.geosolutions.geoserver.rest.GeoServerRESTPublisher;
-import it.geosolutions.geoserver.rest.GeoServerRESTReader;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -46,9 +45,6 @@ public class Controller extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        // url pour poster la nouvelle couche
-        String url = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/file.shp";
-        
         Part part = request.getPart("shapefile");  // On récupère le champ du fichier
         String nomFichier = getNomFichier(part);   // On vérifie qu'on a bien reçu un fichier
         
@@ -61,8 +57,6 @@ public class Controller extends HttpServlet {
         }
         
         String location = CHEMIN_FICHIERS + nomFichier;
-//        jsonPostRequest(url,location);
-        
         String RESTURL  = "http://localhost:8080/geoserver";
         String RESTUSER = "admin";
         String RESTPW   = "geoserver";
@@ -72,20 +66,8 @@ public class Controller extends HttpServlet {
         
         File zipFile = new File(location);
         nomFichier = nomFichier.replace(".zip", "");
-        boolean published = publisher.publishShp("Cameroun", "cameroun_GisData", nomFichier, zipFile, "EPSG:4326", "default_point");
-
-        
-        // Après l'upload du layer je modifie directement son srs à EPSG:4326 pour que l'affichage se passe sans bemol
-//        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
-//        JSONObject featuresByLayout = jsonGetRequest(base+nomFichier);
-//        try {
-//            featuresByLayout.getJSONObject("featureType").remove("srs");
-//            featuresByLayout.getJSONObject("featureType").put("srs", "EPSG:4326");
-//        } catch (JSONException ex) {
-//            Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-        
-//        jsonPutFeatureRequest(base+nomFichier,featuresByLayout.toString());
+        boolean published = 
+            publisher.publishShp("Cameroun", "cameroun_GisData", nomFichier, zipFile, "EPSG:4326", "default_point");
         
         JSONArray send = affichageCarte();
         request.setAttribute("layerGroup", send);
@@ -124,11 +106,14 @@ public class Controller extends HttpServlet {
                             .getJSONObject("attributes")
                             .getJSONObject("attribute");
 
+                    } catch (Exception e) {
+                    }
+                    
+                    try {
                         table2_2= featuresByLayout
                             .getJSONObject("featureType")
                             .getJSONObject("attributes")
                             .getJSONArray("attribute");
-
                     } catch (Exception e) {
                     }
                 
@@ -190,38 +175,6 @@ public class Controller extends HttpServlet {
     
 
     // Methodes pour appeler pour gerer les URLs
-    
-    public static void jsonPostRequest(String url, String parameters) {
-        try {
-            URL obj = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("PUT");
-
-            String user_name="admin";
-            String password="geoserver";
-
-            String userCredentials = user_name+":"+password;
-            String basicAuth = "Basic " + new String(new Base64().encode(userCredentials.getBytes()));
-            con.setRequestProperty ("Authorization", basicAuth);
-            con.setRequestProperty("Content-Type", "application/zip");  
-            
-            // Send post request
-            con.setDoOutput(true);
-            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-            wr.writeBytes(parameters);
-            wr.flush();
-            wr.close();
-            con.connect();
-            int responseCode = con.getResponseCode();
-            System.out.println("Sending 'PUT' request to URL : " + url);
-            System.out.println("Put parameters : " + parameters);
-            System.out.println("Response Code : " + responseCode);
-            
-            } catch (IOException e) {
-             System.out.println(e);
-           }
-    }
-    
     public static JSONObject jsonGetRequest(String url) {
         JSONObject jsonObj = null;
         try {
@@ -255,7 +208,6 @@ public class Controller extends HttpServlet {
            }
         return jsonObj;
     }
-   
     
     public static void jsonPutFeatureRequest(String url, String parameters) {
         try {
