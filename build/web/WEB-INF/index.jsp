@@ -162,7 +162,7 @@
               <div class="m-auto">
                 <div class="input-group">
                   <div class="custom-file">
-                    <input class="custom-file-input" id="customFile" type="file" name="shapefile" accept=".shp, .dbf">
+                    <input class="custom-file-input" id="customFile" type="file" name="shapefile" accept=".zip">
                     <label class="custom-file-label" for="customFile">Choisir Le ShapeFile De La Couche à Charger</label>
                   </div>
                 </div>

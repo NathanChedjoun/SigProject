@@ -5,7 +5,7 @@
  */
 $(function () {
   const format = "image/png";
-  const excludeAttribute = ["gid", "osm_id", "osm_way_id", "ref_cog", "geom"];
+  const excludeAttribute = ["gid", "osm_id", "osm_way_id", "ref_COG", "the_geom", "fid"];
   const operateurs = ["=", "<>", ">", ">=", "<", "<=", "LIKE", "IN"];
   const layersGroup = obj;
   const cqlAttribut = $("#cqlAttribut");
@@ -173,7 +173,7 @@ $(function () {
         lyr.getLayers().forEach(subLyr => {
           subLyr.getSource().updateParams(filterParams);
           subLyr.getSource().refresh()
-        })
+        });
       });
     } else {
       const attribut = $("#cqlAttribut").children("option:selected").val();

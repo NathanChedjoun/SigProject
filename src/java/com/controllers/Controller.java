@@ -1,6 +1,8 @@
 
 package com.controllers;
 
+import it.geosolutions.geoserver.rest.GeoServerRESTPublisher;
+import it.geosolutions.geoserver.rest.GeoServerRESTReader;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -45,7 +47,7 @@ public class Controller extends HttpServlet {
             throws ServletException, IOException {
         
         // url pour poster la nouvelle couche
-        String url = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/external.shp";
+        String url = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/file.shp";
         
         Part part = request.getPart("shapefile");  // On récupère le champ du fichier
         String nomFichier = getNomFichier(part);   // On vérifie qu'on a bien reçu un fichier
@@ -55,24 +57,35 @@ public class Controller extends HttpServlet {
             // Corrige un bug du fonctionnement d'Internet Explorer
              nomFichier = nomFichier.substring(nomFichier.lastIndexOf('/') + 1)
                     .substring(nomFichier.lastIndexOf('\\') + 1);
-             nomFichier = nomFichier.replace("CM_2018-08-01_WGS84_", "");
             ecrireFichier(part, nomFichier, CHEMIN_FICHIERS);  // On écrit définitivement le fichier sur le disque
         }
         
-        String body = "file:///" + CHEMIN_FICHIERS + nomFichier;
-        jsonPostRequest(url,body);
+        String location = CHEMIN_FICHIERS + nomFichier;
+//        jsonPostRequest(url,location);
+        
+        String RESTURL  = "http://localhost:8080/geoserver";
+        String RESTUSER = "admin";
+        String RESTPW   = "geoserver";
+        
+        //GeoServerRESTReader reader = new GeoServerRESTReader(RESTURL, RESTUSER, RESTPW);
+        GeoServerRESTPublisher publisher = new GeoServerRESTPublisher(RESTURL, RESTUSER, RESTPW);
+        
+        File zipFile = new File(location);
+        nomFichier = nomFichier.replace(".zip", "");
+        boolean published = publisher.publishShp("Cameroun", "cameroun_GisData", nomFichier, zipFile, "EPSG:4326", "default_point");
+
         
         // Après l'upload du layer je modifie directement son srs à EPSG:4326 pour que l'affichage se passe sans bemol
-        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
-        JSONObject featuresByLayout = jsonGetRequest(base+nomFichier);
-        try {
-            featuresByLayout.getJSONObject("featureType").remove("srs");
-            featuresByLayout.getJSONObject("featureType").put("srs", "EPSG:4326");
-        } catch (JSONException ex) {
-            Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        String base = "http://localhost:8080/geoserver/rest/workspaces/Cameroun/datastores/cameroun_GisData/featuretypes/";
+//        JSONObject featuresByLayout = jsonGetRequest(base+nomFichier);
+//        try {
+//            featuresByLayout.getJSONObject("featureType").remove("srs");
+//            featuresByLayout.getJSONObject("featureType").put("srs", "EPSG:4326");
+//        } catch (JSONException ex) {
+//            Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         
-        jsonPutFeatureRequest(base+nomFichier,featuresByLayout.toString());
+//        jsonPutFeatureRequest(base+nomFichier,featuresByLayout.toString());
         
         JSONArray send = affichageCarte();
         request.setAttribute("layerGroup", send);
@@ -190,7 +203,7 @@ public class Controller extends HttpServlet {
             String userCredentials = user_name+":"+password;
             String basicAuth = "Basic " + new String(new Base64().encode(userCredentials.getBytes()));
             con.setRequestProperty ("Authorization", basicAuth);
-            con.setRequestProperty("Content-Type", "text/plain"); 
+            con.setRequestProperty("Content-Type", "application/zip");  
             
             // Send post request
             con.setDoOutput(true);
